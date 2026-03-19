@@ -20,6 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectUsersTo(function (Illuminate\Http\Request $request) {
+            $centralDomains = config('tenancy.central_domains', ['localhost', 'developement.localhost', '127.0.0.1']);
+            if (in_array($request->getHost(), $centralDomains)) {
+                return route('central.dashboard');
+            }
+            return route('dashboard', ['tenant' => tenant('id') ?? current(explode('.', $request->getHost()))]);
+        });
+
         $middleware->alias([
             'tenant.context' => SetTenantContext::class,
             'tenant.active' => EnsureTenantIsActive::class,
