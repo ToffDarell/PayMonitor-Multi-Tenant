@@ -1,4 +1,4 @@
-@php
+<?php
     $pageTitle = trim($__env->yieldContent('title', 'Central App')) ?: 'Central App';
     $user = auth()->user();
     $navItemClass = static function (bool $active): string {
@@ -15,7 +15,7 @@
         ['key' => 'warning', 'message' => session('warning')],
         ['key' => 'success', 'message' => session('status')],
     ])->filter(fn (array $flash): bool => filled($flash['message']))->values();
-@endphp
+?>
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -143,13 +143,13 @@
                 @if($flashMessages->isNotEmpty())
                     <div class="space-y-3">
                         @foreach($flashMessages as $flash)
-                            @php
+                            <?php
                                 $flashStyle = match ($flash['key']) {
                                     'success' => 'border-l-green-500 bg-green-500/10 text-green-100',
                                     'error' => 'border-l-red-500 bg-red-500/10 text-red-100',
                                     default => 'border-l-amber-400 bg-amber-500/10 text-amber-100',
                                 };
-                            @endphp
+                            ?>
                             <div x-data="{ visible: true }" x-init="setTimeout(() => visible = false, 4000)" x-show="visible" x-transition.opacity.duration.300ms class="rounded-xl border border-white/10 border-l-4 px-4 py-3 text-sm {{ $flashStyle }}">
                                 {{ $flash['message'] }}
                             </div>
