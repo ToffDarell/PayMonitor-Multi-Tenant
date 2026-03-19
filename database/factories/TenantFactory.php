@@ -14,21 +14,17 @@ class TenantFactory extends Factory
     public function definition(): array
     {
         $name = fake()->company();
+        $id = Str::slug($name).'-'.fake()->unique()->numberBetween(100, 999);
 
         return [
+            'id' => $id,
             'plan_id' => Plan::factory(),
             'name' => $name,
-            'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(100, 999),
             'email' => fake()->unique()->companyEmail(),
-            'phone' => fake()->phoneNumber(),
             'address' => fake()->address(),
-            'is_active' => true,
-            'trial_ends_at' => now()->addDays(30),
+            'admin_name' => fake()->name(),
+            'status' => 'active',
+            'subscription_due_at' => now()->addMonth()->toDateString(),
         ];
-    }
-
-    public function inactive(): static
-    {
-        return $this->state(fn (array $attributes) => ['is_active' => false]);
     }
 }

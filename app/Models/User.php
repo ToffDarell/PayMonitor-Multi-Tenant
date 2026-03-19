@@ -1,23 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory;
+    use HasRoles;
+    use Notifiable;
+
+    protected string $guard_name = 'web';
 
     protected $fillable = [
-        'tenant_id',
-        'branch_id',
-        'role',
         'name',
         'email',
         'password',
+        'branch_id',
     ];
 
     protected $hidden = [
@@ -28,14 +34,8 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
-    }
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
     }
 
     public function branch(): BelongsTo
@@ -43,18 +43,13 @@ class User extends Authenticatable
         return $this->belongsTo(Branch::class);
     }
 
-    public function isSuperAdmin(): bool
+    public function loans(): HasMany
     {
-        return $this->role === 'superadmin';
+        return $this->hasMany(Loan::class);
     }
 
-    public function isAdmin(): bool
+    public function loanPayments(): HasMany
     {
-        return $this->role === 'admin';
-    }
-
-    public function isManager(): bool
-    {
-        return $this->role === 'manager';
+        return $this->hasMany(LoanPayment::class);
     }
 }

@@ -2,41 +2,54 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Credit;
-use App\Models\Customer;
-use App\Models\Product;
-use App\Models\Sale;
+use App\Models\Branch;
 use App\Models\Tenant;
-use Illuminate\Http\Request;
+use App\Models\User;
 
 class DashboardController extends Controller
 {
     public function index(): \Illuminate\View\View
     {
         $tenantId = auth()->user()->tenant_id;
-        $branchId = auth()->user()->branch_id;
 
-        $totalSales = Sale::where('tenant_id', $tenantId)->sum('total');
-        $totalCredits = Credit::where('tenant_id', $tenantId)->where('status', '!=', 'paid')->sum('balance');
-        $totalCustomers = Customer::where('tenant_id', $tenantId)->count();
-        $totalProducts = Product::where('tenant_id', $tenantId)->count();
+        $totalBranches = Branch::query()
+            ->where('tenant_id', $tenantId)
+            ->count();
 
-        $recentSales = Sale::with('customer')
+        $activeBranches = Branch::query()
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->count();
+
+        $totalUsers = User::query()
+            ->where('tenant_id', $tenantId)
+            ->count();
+
+        $adminUsers = User::query()
+            ->where('tenant_id', $tenantId)
+            ->where('role', 'admin')
+            ->count();
+
+        $recentUsers = User::query()
+            ->with('branch')
             ->where('tenant_id', $tenantId)
             ->latest()
             ->limit(5)
             ->get();
 
-        $overdueCredits = Credit::with('customer')
+        $branchOverview = Branch::query()
             ->where('tenant_id', $tenantId)
-            ->where('status', 'overdue')
             ->latest()
             ->limit(5)
             ->get();
 
         return view('dashboard', compact(
-            'totalSales', 'totalCredits', 'totalCustomers',
-            'totalProducts', 'recentSales', 'overdueCredits'
+            'totalBranches',
+            'activeBranches',
+            'totalUsers',
+            'adminUsers',
+            'recentUsers',
+            'branchOverview'
         ));
     }
 

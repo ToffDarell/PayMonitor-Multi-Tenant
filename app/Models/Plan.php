@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,13 +17,12 @@ class Plan extends Model
         'price',
         'max_branches',
         'max_users',
-        'is_active',
+        'description',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
             'price' => 'decimal:2',
         ];
     }

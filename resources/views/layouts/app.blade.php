@@ -16,61 +16,62 @@
 <div class="sidebar">
     <div class="brand">Pay<span>Monitor</span></div>
     <nav class="mt-2">
-        @php $role = auth()->user()->role; @endphp
+        @php
+            $role = auth()->user()->getRoleNames()->first() ?? 'user';
+            $isCentralUser = auth()->user()->hasRole('super_admin');
+        @endphp
 
-        @if($role === 'superadmin')
-            <div class="nav-section">Super Admin</div>
-            <a href="{{ route('superadmin.dashboard') }}" class="nav-link {{ request()->routeIs('superadmin.dashboard') ? 'active' : '' }}">
+        @if($isCentralUser)
+            <div class="nav-section">Central App</div>
+            <a href="{{ url('/central/dashboard') }}" class="nav-link {{ request()->is('central/dashboard') ? 'active' : '' }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-            <a href="{{ route('superadmin.tenants.index') }}" class="nav-link {{ request()->routeIs('superadmin.tenants.*') ? 'active' : '' }}">
+            <a href="{{ url('/central/tenants') }}" class="nav-link {{ request()->is('central/tenants*') ? 'active' : '' }}">
                 <i class="bi bi-buildings"></i> Tenants
             </a>
-            <a href="{{ route('superadmin.plans.index') }}" class="nav-link {{ request()->routeIs('superadmin.plans.*') ? 'active' : '' }}">
+            <a href="{{ url('/central/plans') }}" class="nav-link {{ request()->is('central/plans*') ? 'active' : '' }}">
                 <i class="bi bi-card-list"></i> Plans
+            </a>
+            <a href="{{ url('/central/payments') }}" class="nav-link {{ request()->is('central/payments*') ? 'active' : '' }}">
+                <i class="bi bi-cash-coin"></i> Payments
             </a>
         @else
             <div class="nav-section">Main</div>
-            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+            <a href="{{ url('/dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
 
-            <div class="nav-section">Sales</div>
-            <a href="{{ route('sales.index') }}" class="nav-link {{ request()->routeIs('sales.*') ? 'active' : '' }}">
-                <i class="bi bi-receipt"></i> Sales
-            </a>
-            <a href="{{ route('credits.index') }}" class="nav-link {{ request()->routeIs('credits.*') ? 'active' : '' }}">
-                <i class="bi bi-credit-card"></i> Credits
-            </a>
-            <a href="{{ route('customers.index') }}" class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}">
-                <i class="bi bi-people"></i> Customers
-            </a>
-
-            <div class="nav-section">Inventory</div>
-            <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
-                <i class="bi bi-box-seam"></i> Products
-            </a>
-
-            <div class="nav-section">Reports</div>
-            <a href="{{ route('reports.sales') }}" class="nav-link {{ request()->routeIs('reports.sales') ? 'active' : '' }}">
-                <i class="bi bi-bar-chart"></i> Sales Report
-            </a>
-            <a href="{{ route('reports.credits') }}" class="nav-link {{ request()->routeIs('reports.credits') ? 'active' : '' }}">
-                <i class="bi bi-graph-up-arrow"></i> Credits Report
-            </a>
-            <a href="{{ route('reports.products') }}" class="nav-link {{ request()->routeIs('reports.products') ? 'active' : '' }}">
-                <i class="bi bi-clipboard-data"></i> Stock Report
-            </a>
-
-            @if($role === 'admin')
-                <div class="nav-section">Settings</div>
-                <a href="{{ route('branches.index') }}" class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}">
+            @if(in_array($role, ['tenant_admin', 'branch_manager'], true))
+                <div class="nav-section">Operations</div>
+                <a href="{{ url('/branches') }}" class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}">
                     <i class="bi bi-diagram-3"></i> Branches
                 </a>
-                <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <a href="{{ url('/users') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <i class="bi bi-person-gear"></i> Users
                 </a>
             @endif
+
+            <div class="nav-section">Lending</div>
+            <a href="{{ url('/members') }}" class="nav-link {{ request()->routeIs('members.*') ? 'active' : '' }}">
+                <i class="bi bi-people"></i> Members
+            </a>
+            <a href="{{ url('/loan-types') }}" class="nav-link {{ request()->routeIs('loan-types.*') ? 'active' : '' }}">
+                <i class="bi bi-journal-text"></i> Loan Types
+            </a>
+            <a href="{{ url('/loans') }}" class="nav-link {{ request()->routeIs('loans.*') ? 'active' : '' }}">
+                <i class="bi bi-cash-stack"></i> Loans
+            </a>
+            <a href="{{ url('/loan-payments') }}" class="nav-link {{ request()->routeIs('loan-payments.*') ? 'active' : '' }}">
+                <i class="bi bi-wallet2"></i> Payments
+            </a>
+            <a href="{{ url('/reports') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                <i class="bi bi-bar-chart"></i> Reports
+            </a>
+
+            <div class="nav-section">Account</div>
+            <a href="{{ url('/profile') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+                <i class="bi bi-person-circle"></i> Profile
+            </a>
         @endif
     </nav>
 </div>
@@ -81,8 +82,8 @@
         <div class="fw-semibold text-muted">@yield('title', 'Dashboard')</div>
         <div class="d-flex align-items-center gap-3">
             <span class="text-muted small">{{ auth()->user()->name }}</span>
-            <span class="badge bg-secondary text-uppercase">{{ auth()->user()->role }}</span>
-            <form method="POST" action="{{ route('logout') }}">
+            <span class="badge bg-secondary text-uppercase">{{ str_replace('_', ' ', $role) }}</span>
+            <form method="POST" action="{{ url('/logout') }}">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-box-arrow-right"></i> Logout

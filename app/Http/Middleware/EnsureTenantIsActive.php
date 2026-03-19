@@ -4,16 +4,21 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureTenantIsActive
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = auth()->user();
+        $tenant = tenant();
 
-        if ($user && $user->tenant_id && $user->tenant && ! $user->tenant->is_active) {
-            abort(403, 'Your account has been suspended. Please contact support.');
+        if ($tenant !== null && in_array($tenant->status, ['suspended', 'inactive'], true)) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect('/login')->with('error', 'This account has been suspended. Contact support.');
         }
 
         return $next($request);

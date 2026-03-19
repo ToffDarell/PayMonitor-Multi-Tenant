@@ -10,8 +10,8 @@ class SetTenantContext
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check() && auth()->user()->tenant_id) {
-            app()->instance('current_tenant_id', auth()->user()->tenant_id);
+        if (auth()->check() && tenant() !== null) {
+            app()->instance('current_tenant_id', tenant('id'));
         }
 
         return $next($request);

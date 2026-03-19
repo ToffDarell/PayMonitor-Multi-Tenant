@@ -1,61 +1,44 @@
 <?php
 
-use App\Http\Controllers\BranchController;
-use App\Http\Controllers\CreditController;
-use App\Http\Controllers\CreditPaymentController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\SaleController;
-use App\Http\Controllers\SuperAdmin\PlanController;
-use App\Http\Controllers\SuperAdmin\TenantController;
-use App\Http\Controllers\UserController;
+declare(strict_types=1);
+
+use App\Http\Controllers\Auth\Central\AuthenticatedSessionController as CentralAuthenticatedSessionController;
+use App\Http\Controllers\Central\DashboardController as CentralDashboardController;
+use App\Http\Controllers\Central\PaymentController as CentralPaymentController;
+use App\Http\Controllers\Central\PlanController as CentralPlanController;
+use App\Http\Controllers\Central\TenantController as CentralTenantController;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect()->route('login'));
+foreach (config('tenancy.central_domains', ['localhost']) as $domain) {
+    Route::domain($domain)->group(function (): void {
+        Route::view('/', 'welcome')->name('welcome');
 
-// Super Admin routes (no tenant context needed)
-Route::middleware(['auth'])->prefix('superadmin')->name('superadmin.')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'superAdmin'])->name('dashboard');
-    Route::resource('tenants', TenantController::class);
-    Route::resource('plans', PlanController::class);
-});
+        Route::middleware('guest')->group(function (): void {
+            Route::get('/login', [CentralAuthenticatedSessionController::class, 'create'])->name('central.login');
+            Route::post('/login', [CentralAuthenticatedSessionController::class, 'store'])->name('central.login.store');
+            Route::get('/register', static fn (): RedirectResponse => redirect('/login')->with('error', 'Registration is closed.'))->name('central.register');
+        });
 
-// Tenant routes (require tenant context + active tenant)
-Route::middleware(['auth', 'tenant.context', 'tenant.active'])->group(function () {
+        Route::post('/logout', [CentralAuthenticatedSessionController::class, 'destroy'])
+            ->middleware('auth')
+            ->name('central.logout');
 
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::prefix('central')
+            ->name('central.')
+            ->middleware(['auth', 'role:super_admin'])
+            ->group(function (): void {
+                Route::get('/dashboard', [CentralDashboardController::class, 'index'])->name('dashboard');
 
-    // Profile
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+                Route::post('/tenants/{tenant}/suspend', [CentralTenantController::class, 'suspend'])->name('tenants.suspend');
+                Route::post('/tenants/{tenant}/activate', [CentralTenantController::class, 'activate'])->name('tenants.activate');
+                Route::post('/tenants/{tenant}/resend-credentials', [CentralTenantController::class, 'resendCredentials'])->name('tenants.resend-credentials');
+                Route::resource('tenants', CentralTenantController::class);
 
-    // Branches (admin only)
-    Route::resource('branches', BranchController::class);
+                Route::resource('plans', CentralPlanController::class)->except('show');
 
-    // Users (admin only)
-    Route::resource('users', UserController::class);
-
-    // Customers
-    Route::resource('customers', CustomerController::class);
-
-    // Products
-    Route::resource('products', ProductController::class);
-
-    // Sales
-    Route::resource('sales', SaleController::class)->except(['edit', 'update']);
-
-    // Credits
-    Route::resource('credits', CreditController::class)->except(['edit', 'update', 'destroy']);
-    Route::post('credits/{credit}/payments', [CreditPaymentController::class, 'store'])->name('credits.payments.store');
-
-    // Reports
-    Route::get('/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
-    Route::get('/reports/credits', [ReportController::class, 'credits'])->name('reports.credits');
-    Route::get('/reports/products', [ReportController::class, 'products'])->name('reports.products');
-});
-
-require __DIR__.'/auth.php';
+                Route::get('/payments', [CentralPaymentController::class, 'index'])->name('payments.index');
+                Route::post('/payments/{tenant}/mark-paid', [CentralPaymentController::class, 'markPaid'])->name('payments.mark-paid');
+            });
+    });
+}

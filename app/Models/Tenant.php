@@ -1,33 +1,66 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Stancl\Tenancy\Contracts\TenantWithDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDomains;
+use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
+use Throwable;
 
-class Tenant extends Model
+class Tenant extends BaseTenant implements TenantWithDatabase
 {
-    use HasFactory, SoftDeletes;
+    use HasDatabase;
+    use HasDomains;
+    use HasFactory;
 
     protected $fillable = [
+        'id',
         'plan_id',
         'name',
-        'slug',
         'email',
-        'phone',
         'address',
-        'is_active',
-        'trial_ends_at',
+        'admin_name',
+        'status',
+        'subscription_due_at',
     ];
+
+    public static function getCustomColumns(): array
+    {
+        return [
+            'id',
+            'plan_id',
+            'name',
+            'email',
+            'address',
+            'admin_name',
+            'status',
+            'subscription_due_at',
+            'created_at',
+            'updated_at',
+        ];
+    }
+
+    public function getIncrementing(): bool
+    {
+        return false;
+    }
+
+    public function getKeyType(): string
+    {
+        return 'string';
+    }
 
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
-            'trial_ends_at' => 'datetime',
+            'subscription_due_at' => 'date',
         ];
     }
 
@@ -36,33 +69,48 @@ class Tenant extends Model
         return $this->belongsTo(Plan::class);
     }
 
-    public function users(): HasMany
+    public function getFullDomain(): string
     {
-        return $this->hasMany(User::class);
+        $domain = $this->domains()->value('domain');
+
+        if ($domain === null) {
+            $domain = "{$this->id}.".config('tenancy.tenant_base_domain', 'localhost');
+        }
+
+        $scheme = parse_url((string) config('app.url'), PHP_URL_SCHEME) ?: 'http';
+
+        return "{$scheme}://{$domain}";
     }
 
-    public function branches(): HasMany
+    public function isOverdue(): bool
     {
-        return $this->hasMany(Branch::class);
+        if ($this->subscription_due_at === null) {
+            return false;
+        }
+
+        return $this->subscription_due_at->lt(today());
     }
 
-    public function customers(): HasMany
+    public function getUsage(): int
     {
-        return $this->hasMany(Customer::class);
-    }
+        try {
+            return (int) $this->run(static function (): int {
+                return collect([
+                    'branches',
+                    'users',
+                    'members',
+                    'loan_types',
+                    'loans',
+                ])->sum(static function (string $table): int {
+                    if (! Schema::hasTable($table)) {
+                        return 0;
+                    }
 
-    public function products(): HasMany
-    {
-        return $this->hasMany(Product::class);
-    }
-
-    public function sales(): HasMany
-    {
-        return $this->hasMany(Sale::class);
-    }
-
-    public function credits(): HasMany
-    {
-        return $this->hasMany(Credit::class);
+                    return DB::table($table)->count();
+                });
+            });
+        } catch (Throwable) {
+            return 0;
+        }
     }
 }
